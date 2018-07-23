@@ -4,10 +4,10 @@ sys.path.append(os.path.abspath(os.path.dirname(__file__)) + '/' +'..')
 from _pybgpstream import BGPStream, BGPRecord, BGPElem
 from itertools import groupby
 from datetime import datetime
-from objects_package import autonomous_system
+import matplotlib.pyplot as plt
 import networkx as nx
 import calendar
-import matplotlib.pyplot as plt
+
 
 
 # method to catch data from MapOfInternet

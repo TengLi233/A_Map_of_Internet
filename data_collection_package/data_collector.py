@@ -1,6 +1,6 @@
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.dirname(__file__)) + '/' +'..')
+sys.path.append(os.path.abspath(os.path.dirname(__file__)) + '/' + '..')
 
 from _pybgpstream import BGPStream, BGPRecord, BGPElem
 from collections import defaultdict
@@ -17,39 +17,10 @@ class Data_Collector(object):
         self.collector = collector
         self.start = start
         self.end = end
+
+
     # method to catch data from BGPStream
     # return varible is a dictionary stored the asn and its neiborhoods in key-value format
-    def get_data_dict(self):
-        stream = BGPStream()
-        rec = BGPRecord()
-
-        stream.add_filter('collector', self.collector)
-        stream.add_filter('record-type', 'ribs')
-        stream.add_interval_filter(self.start, self.end)
-
-        stream.start()
-
-        as_dict = defaultdict(set)
-
-        while (stream.get_next_record(rec)):
-            if rec.status != "valid":
-                print rec.project, rec.collector, rec.type, rec.time, rec.status
-            else:
-                elem = rec.get_next_elem()
-                while elem:
-                    # the list is a list, which stores an as-path
-                    list = [k for k, g in groupby(elem.fields['as-path'].split(" "))]
-                    peer = str(elem.peer_asn)
-                    # divide the as path to several ASes, and find their neiborhoods
-                    if len(list) > 1 and list[0] == peer:
-                        as_dict[list[-1]].add(list[-2])
-                    # the code below is used to test whether the program catch the correct data
-                    # print rec.project, rec.collector, rec.type, rec.time, rec.status
-                    # print elem.type,elem.fields['as-path']
-                    elem = rec.get_next_elem()
-        return as_dict
-
-
     def get_data_graph(self):
         stream = BGPStream()
         rec = BGPRecord()
@@ -80,6 +51,7 @@ class Data_Collector(object):
          # add longtitude information to the graph
         as_Graph = self.add_geo_infor(as_Graph)
         return as_Graph
+
 
     def add_geo_infor(self, as_graph):
         # use IP2Location database to get the link between AS and longtitude
