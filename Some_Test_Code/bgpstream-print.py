@@ -1,27 +1,33 @@
-from _pybgpstream import BGPStream, BGPRecord, BGPElem
+import networkx as nx
 
-stream = BGPStream()
-rec = BGPRecord()
+as_graph = nx.Graph()
 
-collector = input("Please enter the date provider you want to collect data: ")
-start = input("Please enter the time you want to start(YY/MM/DD): ")
-end = input("Please enter the end time(YY/MM/DD): ")
+as_graph.add_node(1)
+as_graph.add_node(2)
+as_graph.add_node(3)
+as_graph.add_node(4)
+as_graph.add_node(8)
 
-stream.add_filter('collector', collector)
-stream.add_filter('record-type', 'ribs')
-#type: project, collerctor, record-type, peer-asn, prefix
-stream.add_interval_filter(1438415400,1438416600)
+print(as_graph.nodes)
 
-stream.start()
+as_graph.add_node(1, longtidude = 1231234)
+as_graph.add_node(2, longtidude = 1231234)
+as_graph.add_node(3, longtidude = 1231234)
+as_graph.add_node(4, longtidude = 1231234)
+as_graph.add_node(1, longtidude = 34)
 
-while(stream.get_next_record(rec)):
-    if rec.status != "valid":
-        print rec.project, rec.collector, rec.type, rec.time, rec.status
-    else:
-        elem = rec.get_next_elem()
-        while(elem):
-            print rec.project, rec.collector, rec.type, rec.time, rec.status
-            print elem.type, elem.peer_address, elem.peer_asn, elem.fields
-            elem = rec.get_next_elem()
+for node in as_graph:
+    print(node, as_graph.nodes[node], as_graph.degree(node))
+
+print(as_graph.has_node(1))
+
+
+
+
+
+
+
+
+
 
 

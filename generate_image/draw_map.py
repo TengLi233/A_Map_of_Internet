@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.dirname(__file__)) + '/' +'..')
 from pyecharts import Graph
-import data_collection_package.get_data as dg
+import used_but_not_useful_code.get_data as dg
 
 
 def draw_map(AS):
@@ -36,4 +36,5 @@ def main():
     draw_map(AS)
 
 
-main()
+if __name__ == '__main__':
+    main()
