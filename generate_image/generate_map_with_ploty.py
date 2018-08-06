@@ -1,13 +1,11 @@
 from datetime import datetime
 import plotly.graph_objs as go
-import plotly.plotly as py
-import networkx as nx
+import plotly
 import calendar
 import plotly
 import math
 import sys
 import os
-
 sys.path.append(os.path.abspath(os.path.dirname(__file__)) + '/' + '..')
 import data_collection_package.data_collector as dc
 
@@ -36,7 +34,7 @@ def draw_map(as_graph):
     for node in as_graph.nodes:
 
         radius = 1 - math.log(float(as_graph.degree(node))/max_degree)
-        area = math.fabs(math.log(float(as_graph.degree(node))/max_degree))
+        area = float(as_graph.degree(node) + 1)/(max_degree + 1)
         try:
             angle = as_graph.node[node]['longtitude']
         except(KeyError):
@@ -53,14 +51,18 @@ def draw_map(as_graph):
         theta=theta,
         mode='markers',
         marker=dict(
+            symbol = 'square',
             size=sizes,
-            color=r,  # set color equal to a variable
+            cmax=0,
+            color=map(lambda x : x * -1, r),  # set color equal to a variable
             colorscale='RdBu',
             showscale=True
         )
     )
-    edge = []
 
+    edge_r = list()
+    edge_theta = list()
+    edge_color = list()
 
     for edge in as_graph.edges:
         try:
@@ -69,28 +71,26 @@ def draw_map(as_graph):
             r1, t1 = as_graph.node[edge[1]]['pos']
             degree1 = as_graph.node[edge[1]]['degree']
 
-            edge_color = min(degree0,degree1)
-            edge_r = [r0, r1, None]
-            edge_theta = [t0, t1, None]
-
-            single_edge = go.Scatterpolar(
-                r=edge_r,
-                theta=edge_theta,
-                line=dict(
-                    width=0.05,
-                    color=edge_color,
-                    colorscale='RdBu'
-                ),
-                mode='lines'
-            )
-            edge.append(single_edge)
+            edge_color.append(min(degree0,degree1))
+            edge_r += [r0, r1, None]
+            edge_theta += [t0, t1, None]
         except(KeyError):
             continue
 
-    data = [node, edge]
+    edges = go.Scatterpolar(
+        r=edge_r,
+        theta=edge_theta,
+        line=dict(
+            width=0.05,
+            color='#e94392',
+        ),
+        mode='lines'
+    )
+
+    data = [node, edges]
 
     fig = go.Figure(data=data)
-    py.iplot(fig, auto_open=True)
+    plotly.offline.plot(fig, filename='AS_MAP_2001.html', auto_open=True)
 
 
 def main():
