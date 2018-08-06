@@ -33,8 +33,8 @@ def get_data(collector, start, end):
                 if len(list) > 1 and list[0] == peer:
                     a_s[list[-1]].add(list[-2])
                 # the code below is used to test whether the program catch the correct data
-                # print rec.project, rec.collector, rec.type, rec.time, rec.status
-                # print elem.type,elem.fields['as-path']
+                print rec.project, rec.collector, rec.type, rec.time, rec.status
+                print elem.type, elem.peer_asn, elem.peer_address, elem.fields
                 elem = rec.get_next_elem()
     print len(a_s)
     return a_s

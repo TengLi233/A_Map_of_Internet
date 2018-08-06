@@ -1,101 +1,104 @@
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.dirname(__file__)) + '/' + '..')
-
-from _pybgpstream import BGPStream, BGPRecord, BGPElem
+from _pybgpstream import BGPStream, BGPRecord
 from collections import defaultdict
 from itertools import groupby
 from datetime import datetime
 import networkx as nx
 import IP2Location
 import calendar
+import re
 
 
-class Data_Collector(object):
+class DataCollector(object):
 
-    def __init__(self,collector, start, end):
-        self.collector = collector
+    mode = ""
+    as_prefix = defaultdict(set)
+
+    def __init__(self, start, end, mode):
         self.start = start
         self.end = end
+        self.mode = mode
 
+        if mode == "IPv4":
+            self.pattern = "(((\d{1,2})|(1\d{2})|(2[0-4]\d)|(25[0-5]))\.){3}((\d{1,2})|(1\d{2})|(2[0-4]\d)|(25[0-5]))"
+        elif mode == "IPv6":
+            self.pattern = "([\w]*[:])+([\w]*)"
 
     # method to catch data from BGPStream
-    # return varible is a dictionary stored the asn and its neiborhoods in key-value format
     def get_data_graph(self):
+
         stream = BGPStream()
         rec = BGPRecord()
-
-        stream.add_filter('collector', self.collector)
         stream.add_filter('record-type', 'ribs')
         stream.add_interval_filter(self.start, self.end)
-
         stream.start()
 
-        as_Graph = nx.Graph()
+        as_graph = nx.Graph()
 
-        while (stream.get_next_record(rec)):
-            if rec.status != "valid":
-                print rec.project, rec.collector, rec.type, rec.time, rec.status
-            else:
+        while stream.get_next_record(rec):
+            if rec.status == "valid":
                 elem = rec.get_next_elem()
-                while (elem):
+                while elem:
                     # the list is a list, which stores an as-path
-                    list = [k for k, g in groupby(elem.fields['as-path'].split(" "))]
+                    as_path = [k for k, g in groupby(elem.fields['as-path'].split(" "))]
                     peer = str(elem.peer_asn)
                     # judge whether the as-path is legal
-                    if len(list) > 1 and list[0] == peer:
-                        # add edges to the graph
-                        for i in range(0, len(list) - 1):
-                            as_Graph.add_edge(list[i], list[i + 1])
+                    if len(as_path) > 1 and as_path[0] == peer:
+                        if re.match(self.pattern, elem.fields['prefix']):
+                            self.as_prefix[as_path[-1]].add(elem.fields['prefix'])
+                            # add edges to the graph
+                            for i in range(0, len(as_path) - 1):
+                                as_graph.add_edge(as_path[i], as_path[i + 1])
                     elem = rec.get_next_elem()
-         # add longtitude information to the graph
-        as_Graph = self.add_geo_infor(as_Graph)
-        return as_Graph
 
+        as_graph = self.add_geo_loc(as_graph)
 
-    def add_geo_infor(self, as_graph):
+        return as_graph
+
+    def add_geo_loc(self, as_graph):
+        as_prefix = self.as_prefix
         # use IP2Location database to get the link between AS and longtitude
-        IP2LocObj = IP2Location.IP2Location()
-        IP2LocObj.open("../IP2LocationDBs/IP2LOCATION-LITE-DB5.BIN")
-        # use a dict to store the asn and its prefixes
-        as_prefix = defaultdict(set)
+        ip2_loc_obj = IP2Location.IP2Location()
 
-        with open('../IPv4_IPv6_ASN/IP2LOCATION-LITE-ASN.CSV') as f:
-            for lines in f:
-                # split one line data to different parts
-                aslist = lines.split(",")
-                #get the asn and its prefix
-                prefix = aslist[2][1:-1]
-                asn = aslist[3][1:-1]
-
-                if as_graph.has_node(asn):
-                    as_prefix[asn].add(prefix)
+        if self.mode == "IPv4":
+            ip2_loc_obj.open("../IP2LocationDBs/IP2LOCATION-LITE-DB5.BIN")
+        elif self.mode == "IPv6":
+            ip2_loc_obj.open("../IP2LocationDBs/IP2LOCATION-LITE-DB5.IPV6.BIN")
 
         for key in as_prefix:
             # calculate the average longtitude of a set of prefixes for one asn
             sum_longtitude = 0.0
             for elem in as_prefix[key]:
                 ip_adress = elem.split('/')
-                rec = IP2LocObj.get_all(ip_adress[0])
+                try:
+                    rec = ip2_loc_obj.get_all(ip_adress[0])
+                except ValueError:
+                    continue
                 sum_longtitude += rec.longitude
             # set the longtitude as a attribute of the node in graph
-            as_graph.add_node(key, longtitude=sum_longtitude / len(as_prefix[key]))
+            if len(as_prefix[key]) > 0:
+                as_graph.add_node(key, longtitude=sum_longtitude / len(as_prefix[key]))
         return as_graph
 
+    def get_as_prefix(self):
+        return self.as_prefix
 
-def timestamp(year, mounth, day, hour, min):
-    dt = datetime(year, mounth, day, hour, min)
+
+def timestamp(year, month, day, hour, mines):
+    dt = datetime(year, month, day, hour, mines)
     return int(calendar.timegm(dt.timetuple()))
 
+
 def main():
-    start = timestamp(2001, 8, 30, 15, 0)
-    end = timestamp(2001, 8, 30, 15, 10)
-    collector = Data_Collector('rrc06', start, end)
+    start = timestamp(2004, 8, 30, 0, 0)
+    end = timestamp(2004, 8, 30, 1, 0)
+    collector = DataCollector(start, end, "IPv6")
     as_graph = collector.get_data_graph()
-    for node in as_graph:
-        print(node, as_graph.nodes[node], as_graph.degree(node))
+    as_prefix = collector.get_as_prefix()
+    with open("../Autonomous_System_File/AsPrefixes_2004_IPv6.csv", 'w') as f:
+        for key in as_prefix:
+            f.writelines(str(key) + "\t" + str(as_prefix[key]) + "\n")
+    return as_graph
+
 
 if __name__ == '__main__':
     main()
-
-
