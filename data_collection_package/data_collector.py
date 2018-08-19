@@ -1,16 +1,13 @@
 from _pybgpstream import BGPStream, BGPRecord
 from collections import defaultdict
 from itertools import groupby
-from datetime import datetime
 import networkx as nx
 import IP2Location
-import calendar
 import re
 
 
 class DataCollector(object):
 
-    mode = ""
     as_prefix = defaultdict(set)
 
     def __init__(self, start, end, mode):
@@ -19,9 +16,11 @@ class DataCollector(object):
         self.mode = mode
 
         if mode == "IPv4":
-            self.pattern = "(((\d{1,2})|(1\d{2})|(2[0-4]\d)|(25[0-5]))\.){3}((\d{1,2})|(1\d{2})|(2[0-4]\d)|(25[0-5]))"
+            self.pattern = "([\w]*[.])+([\w]*)"
         elif mode == "IPv6":
             self.pattern = "([\w]*[:])+([\w]*)"
+        else:
+            raise ValueError("The mode can only be IPv4 or IPv6.")
 
     # method to catch data from BGPStream
     def get_data_graph(self):
@@ -60,9 +59,9 @@ class DataCollector(object):
         ip2_loc_obj = IP2Location.IP2Location()
 
         if self.mode == "IPv4":
-            ip2_loc_obj.open("../IP2LocationDBs/IP2LOCATION-LITE-DB5.BIN")
+            ip2_loc_obj.open("IP2LocationDBs/IP2LOCATION-LITE-DB5.BIN")
         elif self.mode == "IPv6":
-            ip2_loc_obj.open("../IP2LocationDBs/IP2LOCATION-LITE-DB5.IPV6.BIN")
+            ip2_loc_obj.open("IP2LocationDBs/IP2LOCATION-LITE-DB5.IPV6.BIN")
 
         for key in as_prefix:
             # calculate the average longtitude of a set of prefixes for one asn
@@ -81,24 +80,3 @@ class DataCollector(object):
 
     def get_as_prefix(self):
         return self.as_prefix
-
-
-def timestamp(year, month, day, hour, mines):
-    dt = datetime(year, month, day, hour, mines)
-    return int(calendar.timegm(dt.timetuple()))
-
-
-def main():
-    start = timestamp(2004, 8, 30, 0, 0)
-    end = timestamp(2004, 8, 30, 1, 0)
-    collector = DataCollector(start, end, "IPv6")
-    as_graph = collector.get_data_graph()
-    as_prefix = collector.get_as_prefix()
-    with open("../Autonomous_System_File/AsPrefixes_2004_IPv6.csv", 'w') as f:
-        for key in as_prefix:
-            f.writelines(str(key) + "\t" + str(as_prefix[key]) + "\n")
-    return as_graph
-
-
-if __name__ == '__main__':
-    main()
